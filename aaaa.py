@@ -121,12 +121,14 @@ def apply_filter(frame, mode, window_name="Smart Camera"):
         return canny_module.apply_canny(frame, window_name)
 
     if mode == 3:
-        # 3. Sobel 필터 호출
-        return sobel_module.apply_sobel(frame, window_name)
+        # 3. Gaussian Blur 필터 호출
+        return gaussian_module.apply_gaussian(frame, window_name)
+        
 
     if mode == 4:
-        # 4. Gaussian Blur 필터 호출
-        return gaussian_module.apply_gaussian(frame, window_name)
+        # 4. Sobel 필터 호출
+        return sobel_module.apply_sobel(frame, window_name)
+        
 
     return frame
 
@@ -464,8 +466,8 @@ def main():
                 # 2. 각 필터 모듈의 생성 플래그를 초기화해서 다시 그릴 수 있게 만듦
                 gray_binary_module._trackbar_created = False
                 canny_module._trackbar_created = False
-                sobel_module._trackbar_created = False
                 gaussian_module._trackbar_created = False
+                sobel_module._trackbar_created = False
 
         # a: AR 아이템 순서대로 변경
         elif key == ord("a"):
