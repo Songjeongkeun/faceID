@@ -9,8 +9,7 @@ from facenet_pytorch import InceptionResnetV1
 # 라이브러리 설치 ↓
 # pip install facenet-pytorch torch torchvision opencv-python 
 
-# 모델 학습 : train.py 실행
-# 
+# 모델 학습 : 모델이름_train.py 실행
 
 # 실행 위치와 관계없이 이 파일 옆의 dataset 폴더에 저장
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -369,7 +368,11 @@ def main():
                     color = (0, 255, 0) # green
 
                 # 얼굴 박스 상단에 결과 표시
-                label_text = f"{display_name} ({confidence * 100:.1f}%)"
+                if display_name == "Unknown":
+                    label_text = "Unknown"
+                else:
+                    label_text = f"{display_name} ({confidence * 100:.1f}%)"
+                    
                 cv2.putText(
                     frame,
                     label_text,
