@@ -370,26 +370,15 @@ def main():
 
                 # 얼굴 박스 상단에 결과 표시
                 label_text = f"{display_name} ({confidence * 100:.1f}%)"
-                if display_name == "Unknown":
-                    cv2.putText(
-                        frame,
-                        label_text,
-                        # (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        color,
-                        2,
-                    )
-                else:
-                    cv2.putText(
-                        frame,
-                        label_text,
-                        (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        color,
-                        2,
-                    )
+                cv2.putText(
+                    frame,
+                    label_text,
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    color,
+                    2,
+                )
 
             # 얼굴 등록 모드일 때 일정 간격으로 이미지 저장
             now = time.time()
