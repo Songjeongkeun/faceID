@@ -4,6 +4,10 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
+from VISION import gray_binary_module
+from VISION import canny_module
+from VISION import sobel_module
+from VISION import gaussian_module
 from torchvision import transforms
 from PIL import Image
 from facenet_pytorch import InceptionResnetV1
@@ -30,7 +34,12 @@ TARGET_IMAGE_COUNT = 100
 # 이미지 저장 간격(초)
 SAVE_INTERVAL = 0.2
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    DEVICE = torch.device('cuda')
+elif torch.backends.mps.is_available():
+    DEVICE = torch.device('mps')
+else:
+    DEVICE = torch.device('cpu')
 
 # 추론용 전처리 Transform
 transform_infer = transforms.Compose([
@@ -92,47 +101,34 @@ def get_largest_face(faces):
     return max(faces, key=lambda face: face[2] * face[3])
 
 
-def apply_filter(frame, mode, brightness, contrast):
+def apply_filter(frame, mode, window_name="Smart Camera"):
     """
     선택된 필터를 웹캠 프레임에 적용하는 함수
 
     mode
     0: 원본
     1: 흑백
-    2: 블러
-    3: 엣지 검출
-    4: 밝기 및 대비 조절
+    2: 캐니
+    3: 소벨
+    4: 가우시안 블러
     """
 
     if mode == 0:
         return frame
 
     if mode == 1:
-        # BGR 이미지를 흑백으로 변환
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        # 화면 출력 형식을 맞추기 위해 다시 BGR로 변환
-        return cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-
-    if mode == 2:
-        # Gaussian Blur 적용
-        return cv2.GaussianBlur(frame, (15, 15), 0)
-
-    if mode == 3:
-        # 엣지 검출은 흑백 이미지에서 수행
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 80, 160)
-
-        return cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-
-    if mode == 4:
-        # contrast 값은 0~100이므로 50을 기준값으로 사용
-        alpha = contrast / 50.0
-
-        # brightness 값도 50을 기준으로 밝거나 어둡게 조절
-        beta = brightness - 50
-
-        return cv2.convertScaleAbs(frame, alpha=alpha, beta=beta)
+        # 1. Grayscale & Binary 필터 호출
+        return gray_binary_module.apply_binary(frame, window_name)
+    elif mode == 2:
+        # 2. Canny 필터 호출
+        return canny_module.apply_canny(frame, window_name)
+    elif mode == 3:
+        # 3. Gaussian Blur 필터 호출
+        return gaussian_module.apply_gaussian(frame, window_name)
+    elif mode == 4:
+        # 4. Sobel 필터 호출
+        return sobel_module.apply_sobel(frame, window_name)
+        
 
     return frame
 
@@ -277,11 +273,6 @@ def main():
 
     # 화면 창 생성
     cv2.namedWindow("Smart Camera")
-    cv2.namedWindow("Control")
-
-    # 밝기와 대비를 조절할 트랙바 생성 > 이거 안됨
-    cv2.createTrackbar("Brightness", "Control", 50, 100, lambda x: None)
-    cv2.createTrackbar("Contrast", "Control", 50, 100, lambda x: None)
 
     filter_mode = 0
     ar_item = 0
@@ -351,6 +342,7 @@ def main():
                 face_img = original_frame[y:y+h, x:x+w]
                 name, confidence = predict_identity(model, class_names, face_img)
 
+# 방법 1 --------------------------------------------- unknown---------------
                 # # 확률이 85% 미만이면 Unknown 처리
                 # THRESHOLD = 0.85
                 # if confidence < THRESHOLD:
@@ -360,31 +352,82 @@ def main():
                 #     display_name = name
                 #     color = (0, 255, 0) # green
 
-                # 얼굴 박스 상단에 결과 표시
-                label_text = f"{name} ({confidence * 100:.1f}%)"
+                # # 얼굴 박스 상단에 결과 표시
+                # label_text = f"{name} ({confidence * 100:.1f}%)"
 
-                # putText 좌표 int 변환 및 상단 잘림 방지
-                text_x = int(x)
-                text_y = int(max(30, y - 10))
-                cv2.putText(
-                    frame, 
-                    label_text, 
-                    (text_x, text_y), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.7, 
-                    (0, 0, 0), 
-                    4
-                )
+                # # putText 좌표 int 변환 및 상단 잘림 방지
+                # text_x = int(x)
+                # text_y = int(max(30, y - 10))
+                # cv2.putText(
+                #     frame, 
+                #     label_text, 
+                #     (text_x, text_y), 
+                #     cv2.FONT_HERSHEY_SIMPLEX, 
+                #     0.7, 
+                #     (0, 0, 0), 
+                #     4
+                # )
+                # cv2.putText(
+                #     frame,
+                #     label_text,
+                #     (text_x, text_y),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     0.7,
+                #     (0, 255, 0),
+                #     2,
+                # )
+# ------------------------------------------------
+
+# 방법2-------------------------------------------
+                # 확률이 85% 미만이면 Unknown 처리
+                # THRESHOLD = 0.85
+                # color = (0, 255, 0)
+
+                # 방법 1정리
+
+                display_name = name
+  
+                label_text = f"{display_name} ({confidence * 100:.1f}%)"
+                
+                    
                 cv2.putText(
                     frame,
                     label_text,
-                    (text_x, text_y),
+                    (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (0, 255, 0),
+                    (0 , 255, 0),  # color
                     2,
                 )
 
+
+# --------------------------------------------------------
+# 방법 3 -------------------------------------------- 네모 칸만 뜸
+            # 확률이 85% 미만이면 Unknown 처리
+            # THRESHOLD = 0.85
+            # if confidence < THRESHOLD:
+            #     display_name = "Unknown"
+            #     color = (0, 255, 0) # 아니면 색만 변경 가능
+            # else:
+            #     display_name = name
+            #     color = (0, 255, 0) # green
+
+            # # 얼굴 박스 상단에 결과 표시
+            # if display_name == "Unknown":
+            #     label_text = ""
+            # else:
+            #     label_text = f"{display_name} ({confidence * 100:.1f}%)"
+                
+            # cv2.putText(
+            #     frame,
+            #     label_text,
+            #     (x, y - 10),
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     0.7,
+            #     color,
+            #     2,
+            #                 )
+# -------------------------------------------------------
             # 얼굴 등록 모드일 때 일정 간격으로 이미지 저장
             now = time.time()
 
@@ -414,16 +457,11 @@ def main():
                 )
                 # break
 
-        # 트랙바 값 가져오기
-        brightness = cv2.getTrackbarPos("Brightness", "Control")
-        contrast = cv2.getTrackbarPos("Contrast", "Control")
-
         # 현재 선택된 영상 필터 적용
         result = apply_filter(
             frame,
             filter_mode,
-            brightness,
-            contrast,
+            "Smart Camera"
         )
 
         # 현재 필터와 AR 아이템 상태 표시
@@ -472,16 +510,23 @@ def main():
             break
 
         # 0~4: 필터 변경
-        elif key == ord("0"):
-            filter_mode = 0
-        elif key == ord("1"):
-            filter_mode = 1
-        elif key == ord("2"):
-            filter_mode = 2
-        elif key == ord("3"):
-            filter_mode = 3
-        elif key == ord("4"):
-            filter_mode = 4
+        elif key in [ord("0"), ord("1"), ord("2"), ord("3"), ord("4")]:
+            new_mode = key - ord("0")
+            
+            # 다른 번호의 필터를 눌러 모드가 변경되었을 때만 실행
+            if new_mode != filter_mode:
+                filter_mode = new_mode
+                
+                # 1. 창을 강제로 닫고 다시 열어서 기존 트랙바들을 전부 날림
+                cv2.destroyWindow("Smart Camera")
+                cv2.namedWindow("Smart Camera")
+                
+                # 2. 각 필터 모듈의 생성 플래그를 초기화해서 다시 그릴 수 있게 만듦
+                gray_binary_module._trackbar_created = False
+                canny_module._trackbar_created = False
+                gaussian_module._trackbar_created = False
+                sobel_module._trackbar_created = False
+        
 
         # a: AR 아이템 순서대로 변경
         elif key == ord("a"):
