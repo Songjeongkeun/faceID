@@ -8,9 +8,9 @@ from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "dataset")
-MODEL_SAVE_PATH = os.path.join(BASE_DIR, "vggface_classifier.pth")
+MODEL_SAVE_PATH = os.path.join(BASE_DIR, "EfficientNetFace_classifier.pth")
 
-IMAGE_SIZE = (224, 224)  # VGGFace 표준 입력 크기
+IMAGE_SIZE = (224, 224)  # EfficientNet 표준 입력 크기
 BATCH_SIZE = 8
 EPOCHS = 5 
 LEARNING_RATE = 0.001
@@ -48,11 +48,20 @@ def train_model():
     print("EfficientNet Face 사전 학습 가중치를 불러오는 중...")
 
     # 기존 특징 추출기 레이어들을 동결(Freeze)하여 가중치 파괴 방지
+    # model.parameters(): EfficientNet이 학습하면서 얻은 모든 내부 값, 즉 가중치를 의미
     for param in model.parameters():
-        param.requires_grad = False
+        """
+        - 선과 경계
+        - 색상과 명암
+        - 눈,코처럼 생긴 형태
+        - 질감과 복잡한 모양
+        """
+        param.requires_grad = False # 학습 중에 이런 지식을 변경하지 말라는 의미
 
     # 맨 마지막 분류기 레이어를 우리가 등록한 사람 수에 맞게 교체
     in_features = model.classifier[1].in_features
+    # model.classifier[1] : EfficientNet의 마지막 분류 레이어
+    # in_features: 마지막 분류층에 들어오는 특징의 개수
     model.classifier[1] = nn.Linear(in_features, num_classes).to(DEVICE)
 
     # 4. 손실함수 및 옵티마이저 설정 (새로 교체한 레이어만 학습)

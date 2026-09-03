@@ -9,9 +9,11 @@ from VISION import canny_module
 from VISION import sobel_module
 from VISION import gaussian_module
 from torchvision import transforms
+# 얼굴 인식용 신경망
 from facenet_pytorch import InceptionResnetV1
 # 라이브러리 설치 ↓
 # pip install facenet-pytorch torch torchvision opencv-python 
+from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 
 # 모델 학습 : train.py 실행
 # 
@@ -20,14 +22,14 @@ from facenet_pytorch import InceptionResnetV1
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "dataset")
 
-MODEL_PATH = os.path.join(BASE_DIR, "vggface_classifier.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "EfficientNetFace_classifier.pth")
 
 # 웹캠 번호: 기본 웹캠은 보통 0
 CAMERA_INDEX = 0
 
 # 얼굴 이미지를 저장할 크기
-# SAVE_SIZE = (224, 224)
-SAVE_SIZE = (160, 160)  # VGGFace(InceptionResnetV1) 표준 입력 크기 (160x160)
+SAVE_SIZE = (224, 224)
+# SAVE_SIZE = (160, 160)  # VGGFace(InceptionResnetV1) 표준 입력 크기 (160x160)
 
 # 사람 한 명당 수집할 얼굴 이미지 수
 TARGET_IMAGE_COUNT = 100
@@ -46,18 +48,30 @@ transform_infer = transforms.Compose([
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 ])
 
+transform = transforms.Compose([
+        transforms.Resize(SAVE_SIZE),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+
 def load_trained_model():
-    """학습된 VGGFace 모델(.pth)을 불러옵니다."""
+    """학습된 EfficientNet 모델(.pth)을 불러옵니다."""
     if not os.path.exists(MODEL_PATH):
         return None, None
 
     try:
         checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
         class_names = checkpoint['classes']
+        num_classes = len(class_names)
 
         # Pretrained 백본 생성 후 분류기 교체
-        model = InceptionResnetV1(pretrained=None, classify=True, num_classes=len(class_names))        
+        model = efficientnet_b0(weights=None)  
 
+        # 마지막 분류층 교체
+        in_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(in_features, num_classes).to(DEVICE)      
+
+        # 학습된 가중치 적용
         model.load_state_dict(checkpoint['model_state'])
         model.to(DEVICE)
         model.eval()
