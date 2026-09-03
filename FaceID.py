@@ -5,24 +5,24 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import transforms
+from PIL import Image
 from facenet_pytorch import InceptionResnetV1
 # 라이브러리 설치 ↓
 # pip install facenet-pytorch torch torchvision opencv-python 
 
-# 모델 학습 : 모델이름_train.py 실행
+# 모델 학습 : models/InceptionResnetV1_train.py 실행
+
 
 # 실행 위치와 관계없이 이 파일 옆의 dataset 폴더에 저장
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "dataset")
-
-MODEL_PATH = os.path.join(BASE_DIR, "vggface_classifier.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "vggface_classifier.pth")
 
 # 웹캠 번호: 기본 웹캠은 보통 0
 CAMERA_INDEX = 0
 
 # 얼굴 이미지를 저장할 크기
-# SAVE_SIZE = (224, 224)
-SAVE_SIZE = (160, 160)  # VGGFace(InceptionResnetV1) 표준 입력 크기 (160x160)
+SAVE_SIZE = (224, 224)
 
 # 사람 한 명당 수집할 얼굴 이미지 수
 TARGET_IMAGE_COUNT = 100
@@ -32,18 +32,18 @@ SAVE_INTERVAL = 0.2
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# VGGFace 모델 로드 및 추론 함수
 # 추론용 전처리 Transform
 transform_infer = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((160, 160)),
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 ])
 
 def load_trained_model():
-    """학습된 VGGFace 모델(.pth)을 불러옵니다."""
+    """학습된 InceptionResnetV1 모델(.pth)을 불러옵니다."""
     if not os.path.exists(MODEL_PATH):
+        print("모델 파일이 없습니다.")
         return None, None
 
     try:
@@ -65,7 +65,7 @@ def load_trained_model():
 def predict_identity(model, class_names, face_img):
     """자른 얼굴 영역(ROI)을 입력받아 사람 이름과 확률을 반환합니다."""
     if face_img is None or face_img.size == 0 or model is None:
-        return "Unknown", 0.0
+        return "", 0.0
 
     # BGR -> RGB 변환
     rgb_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
@@ -251,11 +251,6 @@ def register_face(frame, face, user_name, image_count):
 
 
 def main():
-    # 별도 입력 없이 captured 폴더에 자동 저장
-    # user_name = "captured"
-    # save_dir = os.path.join(DATASET_DIR, user_name)
-    # os.makedirs(save_dir, exist_ok=True)
-
     # 웹캠 열기
     cap = cv2.VideoCapture(CAMERA_INDEX)
 
@@ -296,10 +291,8 @@ def main():
     image_count = 0
     last_save_time = 0
 
-    # VGGFace 모델 로드
+    # InceptionResnetV1 모델 로드
     model, class_names = load_trained_model()
-
-    # print(f"이미지 수집 시작: {save_dir}")
 
     while True:
         # 웹캠 프레임 읽기
@@ -326,7 +319,7 @@ def main():
             minSize=(80, 80),
         )
 
-        # 여러 얼굴 중 가장 큰 얼굴 선택
+        # 여러 얼굴 중 가장 큰 얼굴 한 명만 선택
         face = get_largest_face(faces)
 
         if face is not None:
@@ -352,34 +345,43 @@ def main():
                 draw_mustache(frame, x, y, w, h)
 
             # ------------------------------
-            # 실시간 얼굴 인식 및 결과 표시 (VGGFace)
+            # 실시간 얼굴 인식 및 결과 표시 (InceptionResnetV1)
             # ------------------------------
             if model is not None and not register_mode:
                 face_img = original_frame[y:y+h, x:x+w]
                 name, confidence = predict_identity(model, class_names, face_img)
 
-                # 확률이 85% 미만이면 Unknown 처리
-                THRESHOLD = 0.85
-                if confidence < THRESHOLD:
-                    display_name = "Unknown"
-                    color = (0, 0, 255) # red
-                else:
-                    display_name = name
-                    color = (0, 255, 0) # green
+                # # 확률이 85% 미만이면 Unknown 처리
+                # THRESHOLD = 0.85
+                # if confidence < THRESHOLD:
+                #     display_name = "Unknown"
+                #     color = (0, 0, 255) # red
+                # else:
+                #     display_name = name
+                #     color = (0, 255, 0) # green
 
                 # 얼굴 박스 상단에 결과 표시
-                if display_name == "Unknown":
-                    label_text = "Unknown"
-                else:
-                    label_text = f"{display_name} ({confidence * 100:.1f}%)"
-                    
+                label_text = f"{name} ({confidence * 100:.1f}%)"
+
+                # putText 좌표 int 변환 및 상단 잘림 방지
+                text_x = int(x)
+                text_y = int(max(30, y - 10))
+                cv2.putText(
+                    frame, 
+                    label_text, 
+                    (text_x, text_y), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    0.7, 
+                    (0, 0, 0), 
+                    4
+                )
                 cv2.putText(
                     frame,
                     label_text,
-                    (x, y - 10),
+                    (text_x, text_y),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    color,
+                    (0, 255, 0),
                     2,
                 )
 
