@@ -385,48 +385,46 @@ def main():
 
                 # 방법 1정리
 
-                display_name = name
+                # display_name = name
   
-                label_text = f"{display_name} ({confidence * 100:.1f}%)"
+                # label_text = f"{display_name} ({confidence * 100:.1f}%)"
                 
                     
-                cv2.putText(
-                    frame,
-                    label_text,
-                    (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0 , 255, 0),  # color
-                    2,
-                )
+                # cv2.putText(
+                #     frame,
+                #     label_text,
+                #     (x, y - 10),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     0.7,
+                #     (0 , 255, 0),  # color
+                #     2,
+                # )
 
 
 # --------------------------------------------------------
 # 방법 3 -------------------------------------------- 네모 칸만 뜸
             # 확률이 85% 미만이면 Unknown 처리
-            # THRESHOLD = 0.85
-            # if confidence < THRESHOLD:
-            #     display_name = "Unknown"
-            #     color = (0, 255, 0) # 아니면 색만 변경 가능
-            # else:
-            #     display_name = name
-            #     color = (0, 255, 0) # green
+            THRESHOLD = 0.90
+            if confidence < THRESHOLD:
+                display_name = "Unknown"
+            else:
+                display_name = name
 
-            # # 얼굴 박스 상단에 결과 표시
-            # if display_name == "Unknown":
-            #     label_text = ""
-            # else:
-            #     label_text = f"{display_name} ({confidence * 100:.1f}%)"
+            # 얼굴 박스 상단에 결과 표시
+            if display_name == "Unknown":
+                label_text = ""
+            else:
+                label_text = f"{display_name} ({confidence * 100:.1f}%)"
                 
-            # cv2.putText(
-            #     frame,
-            #     label_text,
-            #     (x, y - 10),
-            #     cv2.FONT_HERSHEY_SIMPLEX,
-            #     0.7,
-            #     color,
-            #     2,
-            #                 )
+            cv2.putText(
+                frame,
+                label_text,
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2
+            )
 # -------------------------------------------------------
             # 얼굴 등록 모드일 때 일정 간격으로 이미지 저장
             now = time.time()
