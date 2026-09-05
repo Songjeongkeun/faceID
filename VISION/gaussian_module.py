@@ -2,14 +2,14 @@ import cv2
 
 _trackbar_created = False
 
-def empty_callback(val):
+def empty_callback(val): # OpenCV 함수는 구조상 콜백 함수를 무조건 하나 내놓으라고 요구하기 때문(python OpenCV에선 그럼)
     pass
 
 def apply_gaussian(frame, window_name="Control"):
     global _trackbar_created
     
     # 처음 실행될 때 트랙바 생성
-    if not _trackbar_created:
+    if not _trackbar_created:                               
         cv2.createTrackbar("Gaussian Kernel", window_name, 1, 60, empty_callback)
         _trackbar_created = True
 
