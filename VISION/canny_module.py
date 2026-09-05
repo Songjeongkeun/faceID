@@ -5,7 +5,7 @@ max_lowThreshold = 100
 ratio = 3
 kernel_size = 3
 
-def empty_callback(val):
+def empty_callback(val): # OpenCV 함수는 구조상 콜백 함수를 무조건 하나 내놓으라고 요구하기 때문(python OpenCV에선 그럼)
     pass
 
 def apply_canny(frame, window_name="Control"):
@@ -23,10 +23,11 @@ def apply_canny(frame, window_name="Control"):
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred_gray = cv2.blur(gray_frame, (3, 3))
     
-    # 4. Canny 엣지 검출
+    # 4. Canny 엣지 검출          이미지           최소 임계값      최대 임계값             커널(소벨) 크기
     detected_edges = cv2.Canny(blurred_gray, lowThreshold, lowThreshold * ratio, apertureSize=kernel_size)
     
     # 5. 원본 컬러 프레임에 엣지 마스크 적용
+    #      비트 AND 연산   컬러    컬러     mask 옵션으로 원본 영상에서 엣지가 있는 부분만 색깔을 남기고, 나머지는 싹 다 까맣게 지움
     dst = cv2.bitwise_and(frame, frame, mask=detected_edges)
     
-    return dst
+    return dst # detected_edges # dst 지우면 컬러 아님
